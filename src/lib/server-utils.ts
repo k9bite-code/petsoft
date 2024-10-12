@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "./auth";
 import { Pet, User } from "@prisma/client";
 import prisma from "./db";
+import { TPetEssentials } from "./types";
 
 export async function checkAuth() {
   const session = await auth();
@@ -39,4 +40,43 @@ export async function getPetsByUserId(userId: User["id"]) {
     },
   });
   return pets;
+}
+
+export async function deletePetById(petId: Pet["id"]) {
+  await prisma.pet.delete({
+    where: {
+      id: petId,
+    },
+  });
+}
+
+export async function updatePetById(petId: Pet["id"], data: TPetEssentials) {
+  await prisma.pet.update({
+    where: {
+      id: petId,
+    },
+    data,
+  });
+}
+
+export async function addPetByUserId(userId: User["id"], data: TPetEssentials) {
+  await prisma.pet.create({
+    data: {
+      ...data,
+      user: {
+        connect: {
+          id: userId,
+        },
+      },
+    },
+  });
+}
+
+export async function createNewUser(email: string, hashedPassword: string) {
+  await prisma.user.create({
+    data: {
+      email: email,
+      hashedPassword: hashedPassword,
+    },
+  });
 }

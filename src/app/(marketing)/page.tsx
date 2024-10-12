@@ -25,7 +25,7 @@ export default function Home() {
         </p>
         <div className="mt-10 space-x-3">
           <Button asChild>
-            <Link href="/sign-up">Get started</Link>
+            <Link href="/signup">Get started</Link>
           </Button>
           <Button asChild variant="secondary">
             <Link href="/login">Log in</Link>

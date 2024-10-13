@@ -1,9 +1,9 @@
 import NextAuth, { NextAuthConfig } from "next-auth";
 import bcrypt from "bcryptjs";
+import { getUserByEmail } from "./server-utils";
 import Credentials from "next-auth/providers/credentials";
 import { authSchema } from "./validations";
 import { nextAuthEdgeConfig } from "./auth-edge";
-import prisma from "./db";
 
 export const nextAuthConfig = {
   ...nextAuthEdgeConfig,
@@ -16,11 +16,7 @@ export const nextAuthConfig = {
           console.log("Invalid credentials");
           return null;
         }
-        const user = await prisma.user.findUnique({
-          where: {
-            email: validatedCredentials.data.email,
-          },
-        });
+        const user = await getUserByEmail(validatedCredentials.data.email);
         if (!user) {
           console.log("No user found");
           return null;

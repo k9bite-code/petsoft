@@ -1,6 +1,5 @@
 "use server";
 
-import { sleep } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { authSchema, petFormSchema, petIdSchema } from "@/lib/validations";
 import { signIn, signOut } from "@/lib/auth";
@@ -15,12 +14,13 @@ import {
 } from "@/lib/server-utils";
 import { Prisma } from "@prisma/client";
 import { AuthError } from "next-auth";
+import { redirect } from "next/navigation";
+
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 // --------------- User Actions -----------------
 
 export async function signUp(prevState: unknown, formData: unknown) {
-  await sleep(1000);
-
   if (!(formData instanceof FormData)) {
     console.log("Invalid sign up formData object");
     return;
@@ -48,8 +48,6 @@ export async function signUp(prevState: unknown, formData: unknown) {
 }
 
 export async function logIn(prevState: unknown, formData: unknown) {
-  await sleep(1000);
-
   if (!(formData instanceof FormData)) {
     console.log("Invalid log in formData object");
     return {
@@ -78,15 +76,12 @@ export async function logIn(prevState: unknown, formData: unknown) {
 }
 
 export async function LogOut() {
-  await sleep(1000);
-
   await signOut({ redirectTo: "/" });
 }
 
 //----------------- Pet Actions -----------------
 
 export async function addPet(pet: unknown) {
-  await sleep(1000);
   const session = await checkAuth();
 
   const validatedPet = petFormSchema.safeParse(pet);
@@ -106,7 +101,6 @@ export async function addPet(pet: unknown) {
 }
 
 export async function editPet(petId: unknown, pet: unknown) {
-  await sleep(1000);
   const session = await checkAuth();
 
   // validation
@@ -142,7 +136,6 @@ export async function editPet(petId: unknown, pet: unknown) {
 }
 
 export async function removePet(petId: unknown) {
-  //await sleep(1000);
   const session = await checkAuth();
   // validation
   const validatedPetId = petIdSchema.safeParse(petId);
@@ -172,4 +165,28 @@ export async function removePet(petId: unknown) {
     };
   }
   revalidatePath("/app", "layout");
+}
+
+// --- payment actions ---
+
+export async function createCheckoutSession() {
+  // authentication check
+  const session = await checkAuth();
+
+  // create checkout session
+  const checkoutSession = await stripe.checkout.sessions.create({
+    customer_email: session.user.email,
+    line_items: [
+      {
+        price: process.env.PRODUCT_PRICE_ID,
+        quantity: 1,
+      },
+    ],
+    mode: "payment",
+    success_url: `${process.env.CANONICAL_URL}/payment?success=true`,
+    cancel_url: `${process.env.CANONICAL_URL}/payment?cancelled=true`,
+  });
+
+  // redirect user
+  redirect(checkoutSession.url);
 }

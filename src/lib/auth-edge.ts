@@ -8,29 +8,46 @@ export const nextAuthEdgeConfig = {
   callbacks: {
     // run on every middleware request
     authorized: ({ auth, request }) => {
-      const { pathname } = request.nextUrl;
-      const isAppRoute = pathname.startsWith("/app");
-      const authenticated = Boolean(auth?.user);
-      if (isAppRoute && !authenticated) {
+      // runs on every request with middleware
+      const isLoggedIn = Boolean(auth?.user);
+      const isTryingToAccessApp = request.nextUrl.pathname.includes("/app");
+
+      if (!isLoggedIn && isTryingToAccessApp) {
         return false;
       }
-      if (isAppRoute && authenticated && auth?.user.hasAccess) {
+
+      if (isLoggedIn && isTryingToAccessApp && !auth?.user.hasAccess) {
+        return Response.redirect(new URL("/payment", request.nextUrl));
+      }
+
+      if (isLoggedIn && isTryingToAccessApp && auth?.user.hasAccess) {
         return true;
       }
-      if (isAppRoute && authenticated && !auth?.user.hasAccess) {
-        return false;
+
+      if (
+        isLoggedIn &&
+        (request.nextUrl.pathname.includes("/login") ||
+          request.nextUrl.pathname.includes("/signup")) &&
+        auth?.user.hasAccess
+      ) {
+        return Response.redirect(new URL("/app/dashboard", request.nextUrl));
       }
-      if (!isAppRoute && !authenticated) {
-        return true;
-      }
-      if (!isAppRoute && authenticated) {
-        if (!pathname.includes("/payment") && !auth?.user.hasAccess) {
+
+      if (isLoggedIn && !isTryingToAccessApp && !auth?.user.hasAccess) {
+        if (
+          request.nextUrl.pathname.includes("/login") ||
+          request.nextUrl.pathname.includes("/signup")
+        ) {
           return Response.redirect(new URL("/payment", request.nextUrl));
-        } else {
-          return true;
         }
+
+        return true;
       }
-      // Safety assume user is not authenticated
+
+      if (!isLoggedIn && !isTryingToAccessApp) {
+        return true;
+      }
+
       return false;
     },
     jwt: async ({ token, user, trigger }) => {
